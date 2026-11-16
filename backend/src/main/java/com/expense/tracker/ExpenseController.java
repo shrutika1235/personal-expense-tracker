@@ -3,20 +3,26 @@ package com.expense.tracker;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+import org.springframework.data.domain.Sort;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/expenses")
 @CrossOrigin(origins = "*")
 public class ExpenseController {
 
-    private final List<Expense> expenses =
-            new CopyOnWriteArrayList<>();
+    private final ExpenseRepository repository;
+
+    public ExpenseController(ExpenseRepository repository) {
+        this.repository = repository;
+    }
 
     @GetMapping
     public List<Expense> getExpenses() {
-        return expenses;
+        return repository.findAll(
+            Sort.by(Sort.Direction.DESC, "date")
+        );
     }
 
     @PostMapping
@@ -36,23 +42,22 @@ public class ExpenseController {
         }
 
         expense.setId(UUID.randomUUID().toString());
-        expenses.add(0, expense);
 
-        return ResponseEntity.ok(expense);
+        Expense savedExpense = repository.save(expense);
+
+        return ResponseEntity.ok(savedExpense);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteExpense(
             @PathVariable String id) {
 
-        boolean removed = expenses.removeIf(
-                expense -> expense.getId().equals(id)
-        );
-
-        if (removed) {
-            return ResponseEntity.noContent().build();
+        if (!repository.existsById(id)) {
+            return ResponseEntity.notFound().build();
         }
 
-        return ResponseEntity.notFound().build();
+        repository.deleteById(id);
+
+        return ResponseEntity.noContent().build();
     }
 }
